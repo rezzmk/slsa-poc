@@ -1,28 +1,28 @@
 version: '3.7'
 
 services:
-  nginx:
-    image: nginx:latest
+  web-service-1:
+    build: ./service/ssle-service/ssle-service/
+    hostname: web-service-1
+    restart: always
     ports:
-      - "80:80"
+      - "8080:8080"
     networks:
       - wazuh-network
     volumes:
-      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - web-service-1-logs:/app/logs
+    environment:
+      - SERVICE_NAME=web-service-1
 
-  webhook-bridge:
-    build: 
-      context: .
-      dockerfile: Dockerfile.webhook
+  webhook:
+    image: prom/alertmanager:latest
     ports:
-      - "5001:5001"
+      - "9093:9093"
     volumes:
-      - wazuh_logs:/var/ossec/logs
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
     networks:
       - wazuh-network
-    depends_on:
-      - wazuh.manager
-      - prometheus
 
   wazuh.manager:
     image: wazuh/wazuh-manager:4.9.2
@@ -103,7 +103,7 @@ services:
     hostname: wazuh.dashboard
     restart: always
     ports:
-      - 443:5601
+      - 444:5601
     environment:
       - INDEXER_USERNAME=admin
       - INDEXER_PASSWORD=SecretPassword
@@ -166,16 +166,6 @@ services:
     user: root
     privileged: true
 
-  webhook:
-    image: prom/alertmanager:latest
-    ports:
-      - "9093:9093"
-    volumes:
-      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-      - alertmanager_data:/alertmanager
-    networks:
-      - wazuh-network
-
 volumes:
   wazuh_api_configuration:
   wazuh_etc:
@@ -193,6 +183,8 @@ volumes:
   wazuh-dashboard-custom:
   prometheus_data:
   alertmanager_data:
+  web-service-1-logs:
+    driver: local
 
 networks:
   wazuh-network:

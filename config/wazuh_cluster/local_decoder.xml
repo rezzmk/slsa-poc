@@ -1,0 +1,4 @@
+<decoder name="prometheus-alert">
+  <parent>json</parent>
+  <prematch type="pcre2">\"prometheus_alert\":true</prematch>
+</decoder>

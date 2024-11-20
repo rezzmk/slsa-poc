@@ -1,0 +1,6 @@
+﻿services:
+  ssle-service:
+    image: ssle-service
+    build:
+      context: .
+      dockerfile: ssle-service/Dockerfile

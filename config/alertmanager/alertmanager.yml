@@ -11,12 +11,12 @@ route:
 receivers:
   - name: 'wazuh-webhook'
     webhook_configs:
-      - url: 'http://webhook-bridge:5001/webhook'
-        send_resolved: true
+      - url: 'http://alert-webhook:9093/webhook'
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /tmp/wazuh_token
+        max_alerts: 0
 
-inhibit_rules:
-  - source_match:
-      severity: 'critical'
-    target_match:
-      severity: 'warning'
-    equal: ['alertname']
+templates:
+  - '/etc/alertmanager/config/*.tmpl'

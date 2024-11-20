@@ -1,129 +1,85 @@
 groups:
-  - name: ddos_detection
+  - name: dotnet_ddos_detection
     rules:
-      - alert: HighConnectionRate
-        expr: rate(node_netstat_Tcp_CurrEstab[1m]) > 100
+      - alert: HighRequestRate
+        expr: rate(http_requests_received_total[1m]) > 100
         for: 30s
+        labels:
+          severity: warning
+          attack_type: ddos
+        annotations:
+          summary: "High HTTP request rate detected"
+          description: "Request rate exceeds 100 requests per minute"
+
+      - alert: HighConcurrentConnections
+        expr: process_num_threads > 200
+        for: 1m
+        labels:
+          severity: warning
+          attack_type: ddos
+        annotations:
+          summary: "High number of concurrent connections"
+          description: "Number of threads exceeds normal threshold"
+
+      - alert: HighRequestDuration
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+          attack_type: ddos
+        annotations:
+          summary: "Slow HTTP requests detected"
+          description: "95th percentile of request duration is above 1 second"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_received_total{code=~"5.."}[1m]) / rate(http_requests_received_total[1m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          attack_type: ddos
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 10% of total requests"
+
+      - alert: ASPNETCoreQueueLength
+        expr: dotnet_total_memory_bytes / 1024 / 1024 > 2000
+        for: 5m
         labels:
           severity: critical
           attack_type: ddos
         annotations:
-          summary: "High TCP connection rate detected"
-          description: "Connection rate exceeds threshold"
+          summary: "High memory usage detected"
+          description: "Application memory usage exceeds 2GB"
 
-      - alert: SynFloodAttack
-        expr: rate(node_netstat_Tcp_PassiveOpens[1m]) > 500 and rate(node_netstat_Tcp_CurrEstab[1m]) < 10
-        for: 30s
+      - alert: ConnectionPoolExhaustion
+        expr: rate(process_cpu_seconds_total[1m]) * 100 > 80
+        for: 2m
         labels:
           severity: critical
           attack_type: ddos
         annotations:
-          summary: "Possible SYN flood attack"
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80%"
 
-  - name: spam_detection
-    rules:
-      - alert: HighEmailRate
-        expr: rate(smtp_messages_total[5m]) > 100
+      # Detect potential Slowloris attack
+      - alert: SlowlorisAttack
+        expr: rate(http_requests_in_progress[5m]) > 50 and rate(http_requests_received_total[5m]) < 10
+        for: 2m
+        labels:
+          severity: critical
+          attack_type: ddos
+          subtype: slowloris
+        annotations:
+          summary: "Potential Slowloris attack detected"
+          description: "High number of in-progress requests with low completion rate"
+
+      # Detect unusual HTTP methods
+      - alert: UnusualHTTPMethods
+        expr: rate(http_requests_received_total{method!~"GET|POST|PUT|DELETE"}[5m]) > 10
         for: 1m
         labels:
           severity: warning
-          attack_type: spam
+          attack_type: ddos
         annotations:
-          summary: "Unusual email sending pattern detected"
-
-      - alert: BulkConnections
-        expr: rate(postfix_smtp_connections_total[5m]) > 50
-        for: 1m
-        labels:
-          severity: warning
-          attack_type: spam
-
-  - name: mitm_detection
-    rules:
-      - alert: CertificateAnomaly
-        expr: ssl_certificate_expiry_seconds < 86400
-        for: 1m
-        labels:
-          severity: critical
-          attack_type: mitm
-        annotations:
-          summary: "SSL Certificate anomaly detected"
-
-      - alert: UnexpectedCertChange
-        expr: changes(ssl_certificate_not_after[1h]) > 0
-        for: 1m
-        labels:
-          severity: critical
-          attack_type: mitm
-
-  - name: nginx-ddos-alerts
-    rules:
-    - alert: HighRateOfNginxConnections
-      expr: rate(nginx_connections_accepted[1m]) > 1000 # Adjust threshold based on your normal traffic
-      for: 1m
-      labels:
-        severity: critical
-        service: nginx
-      annotations:
-        summary: "High Rate of Nginx Connection Acceptance"
-        description: "Nginx is accepting connections at a rate higher than 1000 per minute, potential DDoS attack."
-
-    - alert: HighActiveConnections
-      expr: nginx_connections_active > 10000 # Adjust based on your server capacity
-      for: 1m
-      labels:
-        severity: warning
-        service: nginx
-      annotations:
-        summary: "High Active Nginx Connections"
-        description: "The number of active connections to Nginx has exceeded 10,000, indicating unusually high load."
-
-    - alert: HighReadingConnections
-      expr: nginx_connections_reading > 5000 # Adjust based on what's typical for your app
-      for: 1m
-      labels:
-        severity: warning
-        service: nginx
-      annotations:
-        summary: "High Reading Nginx Connections"
-        description: "Nginx has more than 5000 connections in the reading state, might indicate slow request processing or an attack."
-
-    - alert: HighWritingConnections
-      expr: nginx_connections_writing > 5000 # Adjust based on what's typical for your app
-      for: 1m
-      labels:
-        severity: warning
-        service: nginx
-      annotations:
-        summary: "High Writing Nginx Connections"
-        description: "Nginx has more than 5000 connections in the writing state, could suggest slow client response or an attack."
-
-    - alert: HighDroppingConnections
-      expr: rate(nginx_connections_dropped[1m]) > 100 # Adjust based on your normal drop rate
-      for: 1m
-      labels:
-        severity: warning
-        service: nginx
-      annotations:
-        summary: "High Rate of Dropped Nginx Connections"
-        description: "Nginx is dropping connections at a rate higher than 100 per minute, which might indicate resource exhaustion or server overload."
-
-    - alert: HTTPErrorSpike
-      expr: rate(nginx_http_requests_total{status=~"5.."}[1m]) / rate(nginx_http_requests_total[1m]) > 0.3 # 30% error rate
-      for: 1m
-      labels:
-        severity: warning
-        service: nginx
-      annotations:
-        summary: "High HTTP Error Rate"
-        description: "More than 30% of HTTP requests are resulting in 5xx errors, possibly due to server overload or attack."
-
-    - alert: HighRequestRate
-      expr: sum(rate(nginx_http_requests_total[1m])) by (job) > 10000 # Adjust based on your normal traffic
-      for: 1m
-      labels:
-        severity: warning
-        service: nginx
-      annotations:
-        summary: "High Nginx Request Rate"
-        description: "Nginx is processing requests at a rate over 10,000 per minute, which might indicate a DDoS attack."
+          summary: "Unusual HTTP methods detected"
+          description: "High rate of requests using non-standard HTTP methods"
