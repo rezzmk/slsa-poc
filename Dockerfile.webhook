@@ -1,0 +1,18 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY alert_webhook.py .
+
+# Create directory for logs
+RUN mkdir -p /var/ossec/logs && \
+    touch /var/ossec/logs/prometheus_alerts.log && \
+    chmod 755 /var/ossec/logs/prometheus_alerts.log
+
+# Run the application
+CMD ["python", "alert_webhook.py"]
