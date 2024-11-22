@@ -61,6 +61,7 @@ RUN mkdir -p /app/logs
 
 # Copy Wazuh configuration and scripts
 COPY ossec.conf /var/ossec/etc/ossec.conf
+COPY internal_options.conf /var/ossec/etc/local_internal_options.conf
 COPY start.sh .
 
 # Fix line endings and make scripts executable

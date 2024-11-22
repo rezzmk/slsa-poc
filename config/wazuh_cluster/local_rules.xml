@@ -1,41 +1,7 @@
-<!-- /var/ossec/etc/rules/local_rules.xml -->
-<group name="prometheus,">
-  <!-- Base rule for Prometheus alerts -->
-  <rule id="100200" level="3">
-    <decoded_as>json</decoded_as>
-    <field name="alertname">\.+</field>
-    <description>Prometheus Alert: $(alertname)</description>
-  </rule>
-
-  <!-- DDoS Detection Rules -->
-  <rule id="100201" level="12">
-    <if_sid>100200</if_sid>
-    <field name="attack_type">ddos</field>
-    <description>DDoS Attack Detected: $(description)</description>
-    <group>ddos_attack,prometheus_alert,</group>
-  </rule>
-
-  <!-- Resource Exhaustion Rules -->
-  <rule id="100202" level="10">
-    <if_sid>100200</if_sid>
-    <field name="attack_type">resource_exhaustion</field>
-    <description>Resource Exhaustion: $(description)</description>
-    <group>system_error,prometheus_alert,</group>
-  </rule>
-
-  <!-- High Traffic Rules -->
-  <rule id="100203" level="8">
-    <if_sid>100200</if_sid>
-    <field name="alertname">HighRequestRate</field>
-    <description>Abnormal Traffic Pattern: $(description)</description>
-    <group>traffic_anomaly,prometheus_alert,</group>
-  </rule>
-
-  <!-- Critical Service Issues -->
-  <rule id="100204" level="11">
-    <if_sid>100200</if_sid>
-    <field name="severity">critical</field>
-    <description>Critical Service Issue: $(description)</description>
-    <group>service_availability,prometheus_alert,</group>
+<group name="attack,">
+  <rule id="200001" level="15">
+    <description>DDoS attack</description>
+    <field name="alert_attack_type">ddos</field>
   </rule>
 </group>
+

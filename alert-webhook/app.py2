@@ -29,10 +29,8 @@ def format_alert(alert):
         labels = a.get('labels', {})
         annotations = a.get('annotations', {})
         summary = annotations.get('summary', 'No summary')
-        attack_type = labels.get('attack_type', 'unknown')
-        ip_addr = labels.get('client_ip_address', 'unknown')
         # Create a log entry
-        log_entry = f"Alertmanager Alert - Status: {status}, AttackType: {attack_type}, SourceIp: {ip_addr}, Labels: {labels}"
+        log_entry = f"Alertmanager Alert - Status: {status}, Labels: {labels}"
         formatted_alerts.append(log_entry)
     return '\n'.join(formatted_alerts)
 

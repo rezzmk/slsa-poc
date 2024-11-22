@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.HttpLogging;
 using Prometheus;
 using Serilog;
+using Serilog.Formatting.Compact;
+using Serilog.Formatting.Json;
 
 namespace ssle_service;
 
@@ -13,27 +15,45 @@ public class Program
         // Add Serilog
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
-            .WriteTo.File("/app/logs/app.log", rollingInterval: RollingInterval.Day)
+            .WriteTo.File(
+                new CompactJsonFormatter(),
+                "/app/logs/app.log", rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
-        builder.Host.UseSerilog();
+        /*
+        builder.Host.UseSerilog((context, config) => {
+            config.WriteTo.File(
+                new CompactJsonFormatter(),
+                "/app/logs/webservice.log",
+                rollingInterval: RollingInterval.Day
+                //outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level}] {Message} {Exception}{NewLine}"
+            );
+        });
+        */
 
         // Add HTTP logging
+        /*
         builder.Services.AddHttpLogging(logging =>
         {
             logging.LoggingFields = HttpLoggingFields.All;
             logging.RequestHeaders.Add("x-request-id");
             logging.ResponseHeaders.Add("x-response-id");
         });
+        */
 
         // Add services to the container.
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
-        
 
         var app = builder.Build();
 
+        app.UseHttpMetrics(options =>
+        {
+            options.AddCustomLabel(
+                "client_ip_address", 
+                context => context.Connection.RemoteIpAddress?.MapToIPv4()?.ToString() ?? "unknown");
+        });
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -46,25 +66,8 @@ public class Program
         app.UseAuthorization();
         app.MapControllers();
 
-        // Prometheus metrics endpoint
         app.MapMetrics();
-
-        app.MapGet("/", (HttpContext context) =>
-        {
-            Log.Information(
-                "Request received from {IpAddress} with User-Agent {UserAgent}",
-                context.Connection.RemoteIpAddress,
-                context.Request.Headers.UserAgent.ToString()
-            );
-
-            RequestCounter.Inc();
-            return "Hello World!";
-        });
 
         app.Run();
     }
-    
-    private static readonly Counter RequestCounter = Metrics.CreateCounter(
-        "http_requests_total", 
-        "Total number of HTTP requests");
 }

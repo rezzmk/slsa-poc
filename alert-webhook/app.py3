@@ -23,18 +23,7 @@ def alert():
 def format_alert(alert):
     # Extract relevant information from the alert
     alerts = alert.get('alerts', [])
-    formatted_alerts = []
-    for a in alerts:
-        status = a.get('status')
-        labels = a.get('labels', {})
-        annotations = a.get('annotations', {})
-        summary = annotations.get('summary', 'No summary')
-        attack_type = labels.get('attack_type', 'unknown')
-        ip_addr = labels.get('client_ip_address', 'unknown')
-        # Create a log entry
-        log_entry = f"Alertmanager Alert - Status: {status}, AttackType: {attack_type}, SourceIp: {ip_addr}, Labels: {labels}"
-        formatted_alerts.append(log_entry)
-    return '\n'.join(formatted_alerts)
+    return alerts
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)

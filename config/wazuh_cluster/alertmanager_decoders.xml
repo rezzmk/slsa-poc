@@ -1,0 +1,5 @@
+<decoder>
+  <type>regex</type>
+  <name>alertmanager_alert</name>
+  <regex>^Alertmanager Alert - Status: (?P&lt;status&gt;\w+), Labels: (?P&lt;labels&gt;.*), Summary: (?P&lt;summary&gt;.*)$</regex>
+</decoder>

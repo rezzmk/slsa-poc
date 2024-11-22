@@ -1,4 +1,9 @@
-<decoder name="prometheus-alert">
-  <parent>json</parent>
-  <prematch type="pcre2">\"prometheus_alert\":true</prematch>
+<decoder name="alertmanager-alert">
+    <prematch>Alertmanager Alert - </prematch>
+</decoder>
+
+<decoder name="alertmanager-alert">
+    <parent>alertmanager-alert</parent>
+    <regex>Status: (\w+), AttackType: (\w+), SourceIp: (\d+.\d+.\d+.\d+), Labels: (\.+)</regex>
+    <order>alert_status,alert_attack_type,srcip,alert_label</order>
 </decoder>

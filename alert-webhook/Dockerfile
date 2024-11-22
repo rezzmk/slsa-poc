@@ -2,13 +2,10 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY app.py /app/
 
-# Copy application
-COPY app.py .
+RUN pip install flask
 
-EXPOSE 9094
+EXPOSE 5001
 
 CMD ["python", "app.py"]

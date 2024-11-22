@@ -1,18 +1,62 @@
 version: '3.7'
 
 services:
-  web-service-1:
+  web-service-template: &web-service-template
     build: ./service/ssle-service/ssle-service/
-    hostname: web-service-1
     restart: always
-    ports:
-      - "8080:8080"
     networks:
       - wazuh-network
     volumes:
-      - web-service-1-logs:/app/logs
+      - ./service/ssle-service/ssle-service/ossec.conf:/wazuh-config-mount/etc/ossec.conf
+      - ./service/ssle-service/ssle-service/internal_options.conf:/wazuh-config-mount/etc/local_internal_options.conf
+    environment:
+      - SERVICE_NAME=web-service
+
+  web-service-1:
+    <<: *web-service-template
+    hostname: web-service-1
+    ports:
+      - "8081:8080"
+    volumes:
+      - ws1-logs:/app/logs
+      - alertmanager_logs:/app/logs
     environment:
       - SERVICE_NAME=web-service-1
+
+  web-service-2:
+    <<: *web-service-template
+    hostname: web-service-2
+    ports:
+      - "8082:8080"
+    volumes:
+      - ws2-logs:/app/logs
+      - alertmanager_logs:/app/logs
+    environment:
+      - service_name=web-service-2
+
+  web-service-3:
+    <<: *web-service-template
+    hostname: web-service-3
+    ports:
+      - "8083:8080"
+    volumes:
+      - ws3-logs:/app/logs
+      - alertmanager_logs:/app/logs
+    environment:
+      - service_name=web-service-3
+
+
+  webhook-server:
+    hostname: webhook-server
+    build:
+      context: ./alert-webhook
+    container_name: webhook-server
+    ports:
+      - "5001:5001"
+    networks:
+      - wazuh-network
+    volumes:
+      - alertmanager_logs:/app/logs
 
   webhook:
     image: prom/alertmanager:latest
@@ -21,6 +65,7 @@ services:
     volumes:
       - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
       - alertmanager_data:/alertmanager
+      - alertmanager_logs:/app/logs
     networks:
       - wazuh-network
 
@@ -68,6 +113,8 @@ services:
       - ./config/wazuh_indexer_ssl_certs/wazuh.manager.pem:/etc/ssl/filebeat.pem
       - ./config/wazuh_indexer_ssl_certs/wazuh.manager-key.pem:/etc/ssl/filebeat.key
       - ./config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.conf
+      - ./config/wazuh_cluster/local_decoder.xml:/wazuh-config-mount/etc/decoders/local_decoder.xml
+      - ./config/wazuh_cluster/local_rules.xml:/wazuh-config-mount/etc/rules/local_rules.xml
     networks:
       - wazuh-network
 
@@ -183,7 +230,10 @@ volumes:
   wazuh-dashboard-custom:
   prometheus_data:
   alertmanager_data:
-  web-service-1-logs:
+  alertmanager_logs:
+  ws1-logs:
+    driver: local
+  ws2-logs:
     driver: local
 
 networks:

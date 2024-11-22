@@ -1,69 +1,64 @@
 groups:
-  - name: dotnet_ddos_detection
+  - name: ddos_detection
     rules:
+      # Basic rate limiting
       - alert: HighRequestRate
-        expr: rate(http_requests_received_total[1m]) > 100
+        expr: rate(http_requests_received_total[1m]) > 1000
         for: 30s
         labels:
           severity: warning
           attack_type: ddos
         annotations:
           summary: "High HTTP request rate detected"
-          description: "Request rate exceeds 100 requests per minute"
+          description: "Request rate exceeds 1000 requests per minute"
 
-      - alert: HighConcurrentConnections
-        expr: process_num_threads > 200
-        for: 1m
-        labels:
-          severity: warning
-          attack_type: ddos
-        annotations:
-          summary: "High number of concurrent connections"
-          description: "Number of threads exceeds normal threshold"
-
-      - alert: HighRequestDuration
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+      # Request latency increase
+      - alert: AbnormalLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
         for: 2m
         labels:
           severity: warning
           attack_type: ddos
         annotations:
-          summary: "Slow HTTP requests detected"
-          description: "95th percentile of request duration is above 1 second"
+          summary: "Abnormal latency detected"
+          description: "95th percentile of request duration is above 0.5 seconds"
 
-      - alert: HighErrorRate
-        expr: rate(http_requests_received_total{code=~"5.."}[1m]) / rate(http_requests_received_total[1m]) > 0.1
+      # Connection pool exhaustion
+      - alert: ConnectionPoolSaturation
+        expr: rate(http_connections_current[1m]) > 500
         for: 1m
         labels:
-          severity: warning
+          severity: critical
+          attack_type: ddos
+        annotations:
+          summary: "Connection pool near saturation"
+          description: "Current connection count is abnormally high"
+
+      # Error rate spike
+      - alert: ErrorRateSpike
+        expr: rate(http_requests_total{status=~"5.."}[1m]) / rate(http_requests_total[1m]) * 100 > 10
+        for: 1m
+        labels:
+          severity: critical
           attack_type: ddos
         annotations:
           summary: "High error rate detected"
-          description: "Error rate is above 10% of total requests"
+          description: "Error rate is above 10%"
 
-      - alert: ASPNETCoreQueueLength
-        expr: dotnet_total_memory_bytes / 1024 / 1024 > 2000
-        for: 5m
+      # Memory usage spike
+      - alert: MemoryUsageSpike
+        expr: process_resident_memory_bytes / 1024 / 1024 > 1000
+        for: 2m
         labels:
-          severity: critical
+          severity: warning
           attack_type: ddos
         annotations:
           summary: "High memory usage detected"
-          description: "Application memory usage exceeds 2GB"
-
-      - alert: ConnectionPoolExhaustion
-        expr: rate(process_cpu_seconds_total[1m]) * 100 > 80
-        for: 2m
-        labels:
-          severity: critical
-          attack_type: ddos
-        annotations:
-          summary: "High CPU usage detected"
-          description: "CPU usage is above 80%"
+          description: "Memory usage exceeds 1GB"
 
       # Detect potential Slowloris attack
       - alert: SlowlorisAttack
-        expr: rate(http_requests_in_progress[5m]) > 50 and rate(http_requests_received_total[5m]) < 10
+        expr: rate(http_requests_in_progress[5m]) > 100 and rate(http_requests_total[5m]) < 10
         for: 2m
         labels:
           severity: critical
@@ -72,14 +67,3 @@ groups:
         annotations:
           summary: "Potential Slowloris attack detected"
           description: "High number of in-progress requests with low completion rate"
-
-      # Detect unusual HTTP methods
-      - alert: UnusualHTTPMethods
-        expr: rate(http_requests_received_total{method!~"GET|POST|PUT|DELETE"}[5m]) > 10
-        for: 1m
-        labels:
-          severity: warning
-          attack_type: ddos
-        annotations:
-          summary: "Unusual HTTP methods detected"
-          description: "High rate of requests using non-standard HTTP methods"

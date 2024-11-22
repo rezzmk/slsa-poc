@@ -2,21 +2,20 @@ global:
   resolve_timeout: 5m
 
 route:
-  group_by: ['alertname']
+  group_by: ['alertname', 'instance']
   group_wait: 10s
-  group_interval: 10s
+  group_interval: 30s
   repeat_interval: 1h
   receiver: 'wazuh-webhook'
 
 receivers:
   - name: 'wazuh-webhook'
     webhook_configs:
-      - url: 'http://alert-webhook:9093/webhook'
-        http_config:
-          authorization:
-            type: Bearer
-            credentials_file: /tmp/wazuh_token
-        max_alerts: 0
+      - url: 'http://webhook-server:5001/alert'
 
-templates:
-  - '/etc/alertmanager/config/*.tmpl'
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
