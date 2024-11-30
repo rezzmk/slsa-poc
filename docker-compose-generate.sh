@@ -1,3 +1,8 @@
+#!/bin/bash
+
+NUM_INSTANCES=${1:-3}
+
+car << EOF > docker-compose.yml
 name: SSLE-POC-114834
 
 services:
@@ -12,38 +17,26 @@ services:
     environment:
       - SERVICE_NAME=dotnet-ws
 
-  dotnet-ws1:
-    <<: *dotnet-ws-node-template
-    hostname: dotnet-ws1
-    ports:
-      - "8081:8080"
-    volumes:
-      - ws1-logs:/app/logs
-      - alertmanager_logs:/app/logs
-    environment:
-      - SERVICE_NAME=dotnet-ws1
+EOF
 
-  dotnet-ws2:
-    <<: *dotnet-ws-node-template
-    hostname: dotnet-ws2
-    ports:
-      - "8082:8080"
-    volumes:
-      - ws2-logs:/app/logs
-      - alertmanager_logs:/app/logs
-    environment:
-      - service_name=dotnet-ws2
+for i in $(seq 1 $NUM_INSTANCES); do
+cat << EOF >> docker-compose.yml
 
-  dotnet-ws3:
+  dotnet-ws$i:
     <<: *dotnet-ws-node-template
-    hostname: dotnet-ws3
+    hostname: dotnet-ws$i
     ports:
-      - "8083:8080"
+      - "808$i:8080"
     volumes:
-      - ws3-logs:/app/logs
+      - ws$i-logs:/app/logs
       - alertmanager_logs:/app/logs
     environment:
-      - service_name=dotnet-ws3
+      - SERVICE_NAME=dotnet-ws$i
+
+EOF
+done
+
+cat << EOF >> docker-compose.yml
 
   prometheus-webhook:
     hostname: prometheus-webhook
@@ -191,8 +184,6 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'
-      - '--web.enable-remote-write-receiver'
     depends_on:
       - wazuh.manager
       - node-exporter
@@ -219,6 +210,16 @@ services:
     privileged: true
 
 volumes:
+EOF
+
+for i in $(seq 1 $NUM_INSTANCES); do
+cat << EOF >> docker-compose.yml
+  ws$i-logs:
+    driver: local
+EOF
+done
+
+cat << EOF >> docker-compose.yml
   wazuh_api_configuration:
   wazuh_etc:
   wazuh_logs:
@@ -236,13 +237,8 @@ volumes:
   prometheus_data:
   alertmanager_data:
   alertmanager_logs:
-  ws1-logs:
-    driver: local
-  ws2-logs:
-    driver: local
-  ws3-logs:
-    driver: local
 
 networks:
   internal-poc-network:
     driver: bridge
+EOF

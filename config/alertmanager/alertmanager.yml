@@ -11,7 +11,7 @@ route:
 receivers:
   - name: 'wazuh-webhook'
     webhook_configs:
-      - url: 'http://webhook-server:5001/alert'
+      - url: 'http://prometheus-webhook:5001/alert'
 
 inhibit_rules:
   - source_match:
