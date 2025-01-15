@@ -1,0 +1,43 @@
+smtpd_banner = $myhostname ESMTP $mail_name
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+
+myhostname = mail.local
+mydomain = local
+myorigin = $mydomain
+
+inet_interfaces = all
+inet_protocols = all
+
+mydestination = $myhostname, localhost, localhost.localdomain, mail.local, local
+
+mynetworks = 127.0.0.1/8 172.16.0.0/12 192.168.0.0/16
+relay_domains = $mydestination
+
+# Basic TLS (optional)
+smtpd_tls_security_level = may
+smtpd_tls_auth_only = no
+
+# Dovecot SASL
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_security_options = noanonymous
+
+# SpamAssassin integration
+content_filter = spamassassin
+spamassassin_destination_recipient_limit = 1
+
+# Restrict recipients
+smtpd_recipient_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_unauth_destination
+
+# Deliver mail in Maildir format
+home_mailbox = Maildir/
+mailbox_command =
+mailbox_transport =
+local_recipient_maps = unix:passwd.byname $alias_maps
+

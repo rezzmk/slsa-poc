@@ -2,8 +2,8 @@
     <prematch>Alertmanager Alert - </prematch>
 </decoder>
 
-<decoder name="alertmanager-alert">
+<decoder name="alertmanager-alert-details">
     <parent>alertmanager-alert</parent>
-    <regex>Status: (\w+), AttackType: (\w+), SourceIp: (\d+.\d+.\d+.\d+), Labels: (\.+)</regex>
-    <order>alert_status,alert_attack_type,srcip,alert_label</order>
+    <regex>Status: (\w+), Service: (\w+), AttackType: (\w+), SourceIp: (\d+.\d+.\d+.\d+), SubType: (\w*), Summary: (\.+), Description: (\.+), Labels: (\.+)</regex>
+    <order>alert_status,service_name,alert_attack_type,srcip,alert_subtype,alert_summary,alert_description,alert_label</order>
 </decoder>

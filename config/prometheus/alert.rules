@@ -1,64 +1,74 @@
 groups:
   - name: ddos_detection
     rules:
-      # Basic rate limiting
+      # Basic rate limiting with IP tracking per instance
       - alert: HighRequestRate
-        expr: rate(http_requests_received_total[1m]) > 1000
+        expr: |
+          sum by (instance, client_ip) (
+            rate(http_requests_total{job="dotnet-webservices"}[1m])
+          ) > 100
         for: 30s
+        labels:
+          severity: critical
+          attack_type: ddos
+          client_ip_address: '{{ $labels.client_ip }}'
+        annotations:
+          summary: "High request rate from single IP"
+          description: "IP {{ $labels.client_ip }} is generating over 100 requests per minute"
+
+      # Concurrent connections per IP
+      - alert: HighConcurrentConnections
+        expr: |
+          sum by (client_ip) (
+            http_requests_in_progress{job="dotnet-webservices"}
+          ) > 50
+        for: 1m
         labels:
           severity: warning
           attack_type: ddos
+          client_ip_address: '{{ $labels.client_ip }}'
         annotations:
-          summary: "High HTTP request rate detected"
-          description: "Request rate exceeds 1000 requests per minute"
+          summary: "High concurrent connections from single IP"
+          description: "IP {{ $labels.client_ip }} has over 50 concurrent connections"
 
-      # Request latency increase
+      # Request latency spike detection
       - alert: AbnormalLatency
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
+        expr: |
+          histogram_quantile(0.95, 
+            sum by (le) (rate(http_request_duration_seconds_bucket{job="dotnet-webservices"}[5m]))
+          ) > 1
         for: 2m
         labels:
           severity: warning
           attack_type: ddos
         annotations:
-          summary: "Abnormal latency detected"
-          description: "95th percentile of request duration is above 0.5 seconds"
-
-      # Connection pool exhaustion
-      - alert: ConnectionPoolSaturation
-        expr: rate(http_connections_current[1m]) > 500
-        for: 1m
-        labels:
-          severity: critical
-          attack_type: ddos
-        annotations:
-          summary: "Connection pool near saturation"
-          description: "Current connection count is abnormally high"
+          summary: "High latency detected across services"
+          description: "95th percentile of request duration is above 1 second"
 
       # Error rate spike
       - alert: ErrorRateSpike
-        expr: rate(http_requests_total{status=~"5.."}[1m]) / rate(http_requests_total[1m]) * 100 > 10
+        expr: |
+          sum by (instance) (
+            rate(http_requests_total{status=~"5..",job="dotnet-webservices"}[1m])
+          )
+          /
+          sum by (instance) (
+            rate(http_requests_total{job="dotnet-webservices"}[1m])
+          ) * 100 > 20
         for: 1m
         labels:
           severity: critical
           attack_type: ddos
         annotations:
           summary: "High error rate detected"
-          description: "Error rate is above 10%"
+          description: "Error rate is above 20% for {{ $labels.instance }}"
 
-      # Memory usage spike
-      - alert: MemoryUsageSpike
-        expr: process_resident_memory_bytes / 1024 / 1024 > 1000
-        for: 2m
-        labels:
-          severity: warning
-          attack_type: ddos
-        annotations:
-          summary: "High memory usage detected"
-          description: "Memory usage exceeds 1GB"
-
-      # Detect potential Slowloris attack
-      - alert: SlowlorisAttack
-        expr: rate(http_requests_in_progress[5m]) > 100 and rate(http_requests_total[5m]) < 10
+      # Potential Slowloris attack detection
+      - alert: PotentialSlowloris
+        expr: |
+          sum by (instance) (http_requests_in_progress{job="dotnet-webservices"}) > 100
+          and
+          sum by (instance) (rate(http_requests_total{job="dotnet-webservices"}[5m])) < 10
         for: 2m
         labels:
           severity: critical
@@ -66,4 +76,150 @@ groups:
           subtype: slowloris
         annotations:
           summary: "Potential Slowloris attack detected"
-          description: "High number of in-progress requests with low completion rate"
+          description: "High number of in-progress requests with low completion rate on {{ $labels.instance }}"
+
+  - name: spam_detection
+    rules:
+      - alert: HighSpamRate
+        expr: |
+          (rate(spam_messages_total[5m]) / rate(mail_processed_total[5m])) * 100 > 30
+        for: 2m
+        labels:
+          severity: warning
+          attack_type: spam
+        annotations:
+          summary: "High spam rate detected"
+          description: "More than 30% of processed emails are spam in the last 5 minutes"
+
+      - alert: ExtremeSpamScore
+        expr: spam_score > 15
+        for: 1m
+        labels:
+          severity: critical
+          attack_type: spam
+        annotations:
+          summary: "Very high spam score detected"
+          description: "Message from {{ $labels.sender }} received with spam score > 15"
+
+      - alert: SpamAttackSuspected
+        expr: rate(spam_messages_total[1m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+          attack_type: spam
+        annotations:
+          summary: "Potential spam attack in progress"
+          description: "More than 10 spam messages per minute detected"
+
+  - name: scan_detection
+    rules:
+      - alert: NetworkScanningDetected
+        expr: |
+          (
+            sum by (client_ip) (rate(http_requests_total{status=~"4.."}[1m])) > 0.5
+            and
+            sum by (client_ip) (rate(http_requests_total{status=~"4.."}[1m])) 
+            / 
+            sum by (client_ip) (rate(http_requests_total[1m])) > 0.7
+          )
+          and
+          sum by (client_ip) (http_requests_in_progress) < 3
+        for: 1m
+        labels:
+          severity: warning
+          attack_type: network_scan
+        annotations:
+          summary: "Network scanning detected"
+          description: "Client IP {{ $labels.client_ip }} is generating a high rate of 4xx errors with low concurrent connections, indicating potential scanning activity"
+
+  - name: apt_detection
+    rules:
+      # Suspicious Authentication Patterns
+      - alert: SuspiciousAuthActivity
+        expr: |
+          sum by (instance, client_ip) (
+            rate(http_failed_auth_total{job="dotnet-webservices"}[1h])
+          ) > 0.1
+          and
+          sum by (instance, client_ip) (
+            rate(http_requests_total{job="dotnet-webservices"}[1h])
+          ) < 1
+        for: 1h
+        labels:
+          severity: warning
+          attack_type: apt
+          attack_stage: reconnaissance
+        annotations:
+          summary: "Low and slow authentication probing detected"
+          description: "Suspicious authentication patterns from {{ $labels.client_ip }}"
+
+      # Unusual Access Patterns
+      - alert: UnusualAccessPatterns
+        expr: |
+          (
+            rate(http_requests_total{job="dotnet-webservices", status=~"2.."}[6h])
+            > 0
+          )
+          and on(instance, client_ip)
+          (
+            hour() >= 22 or hour() <= 4
+          )
+        for: 30m
+        labels:
+          severity: warning
+          attack_type: apt
+          attack_stage: persistence
+        annotations:
+          summary: "Unusual access timing detected"
+          description: "Off-hours activity from {{ $labels.client_ip }}"
+
+# Data exfiltration alert
+      - alert: PotentialDataExfiltration
+        expr: |
+          rate(http_response_bytes_total{job="dotnet-webservices"}[5m]) > 102400
+        for: 1m
+        labels:
+          severity: warning
+          attack_type: apt
+          attack_stage: exfiltration
+        annotations:
+          summary: "Potential data exfiltration detected"
+          description: "High outbound data rate detected from {{ $labels.instance }} to {{ $labels.client_ip }}"
+
+      # Command & Control Detection
+      - alert: PotentialC2Traffic
+        expr: |
+          (
+            rate(http_requests_total{job="dotnet-webservices", status=~"2.."}[30m]) > 0
+          )
+          and
+          (
+            rate(http_requests_total{job="dotnet-webservices", status=~"2.."}[30m]) < 0.1
+          )
+          and on(instance, client_ip)
+          (
+            rate(http_request_duration_seconds_count{job="dotnet-webservices"}[30m]) > 0
+          )
+        for: 30m
+        labels:
+          severity: warning
+          attack_type: apt
+          attack_stage: command_control
+        annotations:
+          summary: "Potential C2 traffic detected"
+          description: "Regular low-volume beaconing from {{ $labels.client_ip }}"
+
+      # APT Stage Correlation
+      - alert: CorrelatedAPTActivity
+        expr: |
+          count by (instance, client_ip) (
+            ALERTS{severity="warning", attack_type="apt"}
+          ) >= 2
+        for: 1h
+        labels:
+          severity: critical
+          attack_type: apt
+          attack_stage: correlated
+        annotations:
+          summary: "Correlated APT activity detected"
+          description: "Multiple APT indicators from {{ $labels.client_ip }}"

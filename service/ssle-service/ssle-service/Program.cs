@@ -1,73 +1,62 @@
-using Microsoft.AspNetCore.HttpLogging;
 using Prometheus;
 using Serilog;
-using Serilog.Formatting.Compact;
-using Serilog.Formatting.Json;
 
-namespace ssle_service;
+var builder = WebApplication.CreateBuilder(args);
 
-public class Program
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("/app/logs/app.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
 {
-    public static void Main(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
-
-        // Add Serilog
-        Log.Logger = new LoggerConfiguration()
-            .WriteTo.Console()
-            .WriteTo.File(
-                new CompactJsonFormatter(),
-                "/app/logs/app.log", rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-
-        /*
-        builder.Host.UseSerilog((context, config) => {
-            config.WriteTo.File(
-                new CompactJsonFormatter(),
-                "/app/logs/webservice.log",
-                rollingInterval: RollingInterval.Day
-                //outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level}] {Message} {Exception}{NewLine}"
-            );
-        });
-        */
-
-        // Add HTTP logging
-        /*
-        builder.Services.AddHttpLogging(logging =>
-        {
-            logging.LoggingFields = HttpLoggingFields.All;
-            logging.RequestHeaders.Add("x-request-id");
-            logging.ResponseHeaders.Add("x-response-id");
-        });
-        */
-
-        // Add services to the container.
-        builder.Services.AddControllers();
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
-
-        var app = builder.Build();
-
-        app.UseHttpMetrics(options =>
-        {
-            options.AddCustomLabel(
-                "client_ip_address", 
-                context => context.Connection.RemoteIpAddress?.MapToIPv4()?.ToString() ?? "unknown");
-        });
-
-        // Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
-
-        app.UseHttpsRedirection();
-        app.UseAuthorization();
-        app.MapControllers();
-
-        app.MapMetrics();
-
-        app.Run();
-    }
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
+
+// Configure metrics middleware
+app.Use(async (context, next) =>
+{
+    var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var method = context.Request.Method;
+    var endpoint = context.Request.Path.Value ?? "/";
+
+    using (PrometheusMetricsConfig.TrackRequest(method, clientIp))
+    {
+        var originalBodyStream = context.Response.Body;
+        using var memStream = new MemoryStream();
+        context.Response.Body = memStream;
+
+        await next();
+
+        var responseLength = memStream.Length;
+        memStream.Position = 0;
+        await memStream.CopyToAsync(originalBodyStream);
+
+        PrometheusMetricsConfig.RecordRequest(
+            method, 
+            endpoint, 
+            context.Response.StatusCode.ToString(),
+            clientIp,
+            responseLength
+        );
+    }
+});
+
+// Configure metrics
+PrometheusMetricsConfig.ConfigureMetrics(app);
+
+app.MapControllers();
+
+app.Run();

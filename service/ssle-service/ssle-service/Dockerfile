@@ -29,7 +29,6 @@ WORKDIR /app
 
 # Expose necessary ports
 EXPOSE 8080
-EXPOSE 8081
 
 # Stage 2: Build the Application
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build

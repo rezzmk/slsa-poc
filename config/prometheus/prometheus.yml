@@ -21,3 +21,7 @@ scrape_configs:
         - 'dotnet-ws1:8080'
         - 'dotnet-ws2:8080'
         - 'dotnet-ws3:8080'
+
+  - job_name: 'spam-metrics'
+    static_configs:
+      - targets: ['mail-service:5000']
