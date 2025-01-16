@@ -1,5 +1,6 @@
 using Prometheus;
 using Serilog;
+using ssle_service;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,28 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddHttpClient("ServiceDiscovery");
+
+var serviceDiscoveryOptions = new ServiceDiscoveryOptions
+{
+    ServiceName = builder.Configuration["SERVICE_NAME"] ?? "unknown-service",
+    ServiceType = "web-api",
+    RegistryUrl = builder.Configuration["RegistryUrl"] ?? "http://registry-service:8080/registry",
+    HeartbeatInterval = TimeSpan.FromSeconds(30),
+    Metadata = new Dictionary<string, string>
+    {
+        { "version", "1.0" },
+        { "environment", builder.Environment.EnvironmentName }
+    }
+};
+
+var serverUrl = builder.Configuration["ASPNETCORE_URLS"]?.Split(';').FirstOrDefault() ?? "http://localhost:8080";
+builder.Services.AddHostedService(sp => new ServiceDiscoveryService(
+    sp.GetRequiredService<IHttpClientFactory>(),
+    serviceDiscoveryOptions,
+    serverUrl));
+
 
 var app = builder.Build();
 

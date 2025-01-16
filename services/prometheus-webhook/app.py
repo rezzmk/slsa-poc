@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # Configure service-specific loggers
 service_loggers = {}
-services = ['dotnet-ws1', 'dotnet-ws2', 'dotnet-ws3']
+services = ['dotnet-ws1', 'dotnet-ws2', 'dotnet-ws3', 'mail-service']
 
 # Create loggers for each service
 for service in services:

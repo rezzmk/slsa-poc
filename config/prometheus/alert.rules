@@ -1,7 +1,7 @@
 groups:
   - name: ddos_detection
     rules:
-      # Basic rate limiting with IP tracking per instance
+      # rate limiting with IP tracking per instance
       - alert: HighRequestRate
         expr: |
           sum by (instance, client_ip) (
@@ -16,7 +16,7 @@ groups:
           summary: "High request rate from single IP"
           description: "IP {{ $labels.client_ip }} is generating over 100 requests per minute"
 
-      # Concurrent connections per IP
+      # connections per IP
       - alert: HighConcurrentConnections
         expr: |
           sum by (client_ip) (
@@ -115,22 +115,17 @@ groups:
     rules:
       - alert: NetworkScanningDetected
         expr: |
-          (
-            sum by (client_ip) (rate(http_requests_total{status=~"4.."}[1m])) > 0.5
-            and
-            sum by (client_ip) (rate(http_requests_total{status=~"4.."}[1m])) 
-            / 
-            sum by (client_ip) (rate(http_requests_total[1m])) > 0.7
-          )
-          and
-          sum by (client_ip) (http_requests_in_progress) < 3
-        for: 1m
+          sum by (instance, client_ip) (
+            rate(http_requests_total{status=~"4..", job="dotnet-webservices"}[1m])
+          ) > 2
+        for: 10s
         labels:
           severity: warning
           attack_type: network_scan
+          attack_subtype: api_scanning
         annotations:
           summary: "Network scanning detected"
-          description: "Client IP {{ $labels.client_ip }} is generating a high rate of 4xx errors with low concurrent connections, indicating potential scanning activity"
+          description: "Client IP {{ $labels.client_ip }} is generating many 4xx errors on {{ $labels.instance }}"
 
   - name: apt_detection
     rules:

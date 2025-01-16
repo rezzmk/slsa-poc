@@ -5,6 +5,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install mail server packages and Python
 RUN apt-get update && apt-get install -y \
+    curl \
+    gpg \
+    apt-transport-https \
+    lsb-release \
     postfix \
     dovecot-imapd \
     dovecot-pop3d \
@@ -17,6 +21,16 @@ RUN apt-get update && apt-get install -y \
     swaks \
     rsyslog \
     && rm -rf /var/lib/apt/lists/*
+
+# Add Wazuh GPG key and repository
+RUN curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import \
+    && chmod 644 /usr/share/keyrings/wazuh.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | tee -a /etc/apt/sources.list.d/wazuh.list
+
+COPY ossec.conf /var/ossec/etc/ossec.conf
+COPY internal_options.conf /var/ossec/etc/internal_options.conf
+
+RUN apt-get update && apt-get install -y wazuh-agent=4.9.2-1 && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 RUN pip3 install prometheus_client

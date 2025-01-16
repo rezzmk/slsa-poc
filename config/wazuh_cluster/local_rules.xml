@@ -38,23 +38,22 @@
   <!--</rule>-->
 
   <!-- APT/Scanning Detection Rules -->
-  <!--<rule id="200002" level="14">-->
-  <!--  <description>APT: Network scanning detected</description>-->
-  <!--  <field name="alert_attack_type">network_scan</field>-->
-  <!--  <mitre>-->
-  <!--    <id>T1046</id>-->
-  <!--  </mitre>-->
-  <!--</rule>-->
+  <rule id="200005" level="10">
+    <description>APT: Network scanning detected</description>
+    <field name="alert_attack_type">network_scan</field>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+  </rule>
 
-  <!-- Subtype rules for different scanning patterns -->
-  <!--<rule id="200003" level="14">-->
-  <!--  <if_sid>200002</if_sid>-->
-  <!--  <field name="alert_subtype">api_scanning</field>-->
-  <!--  <description>APT: API endpoint scanning detected</description>-->
-  <!--  <mitre>-->
-  <!--    <id>T1595.002</id>-->
-  <!--  </mitre>-->
-  <!--</rule>-->
+  <rule id="200006" level="12">
+    <if_sid>200005</if_sid>
+    <field name="alert_subtype">api_scanning</field>
+    <description>API endpoint scanning from IP $(srcip)</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+  </rule>
 
   <!-- Additional rule for MTD trigger  -->
   <!--<rule id="200004" level="12">-->

@@ -1,0 +1,6 @@
+﻿services:
+  registryservice:
+    image: registryservice
+    build:
+      context: .
+      dockerfile: RegistryService/Dockerfile

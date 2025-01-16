@@ -2,13 +2,13 @@ name: SSLE-POC-114834
 
 services:
   dotnet-ws-node-template: &dotnet-ws-node-template
-    build: ./service/ssle-service/ssle-service/
+    build: ./services/ssle-service/ssle-service/
     restart: always
     networks:
       - internal-poc-network
     volumes:
-      - ./service/ssle-service/ssle-service/ossec.conf:/wazuh-config-mount/etc/ossec.conf
-      - ./service/ssle-service/ssle-service/internal_options.conf:/wazuh-config-mount/etc/local_internal_options.conf
+      - ./services/ssle-service/ssle-service/ossec.conf:/wazuh-config-mount/etc/ossec.conf
+      - ./services/ssle-service/ssle-service/internal_options.conf:/wazuh-config-mount/etc/local_internal_options.conf
     environment:
       - SERVICE_NAME=dotnet-ws
     cap_add:
@@ -54,10 +54,22 @@ services:
       - service_name=dotnet-ws3
       - ASPNETCORE_URLS=http://dotnet-ws3:8080
 
+  registry-service:
+    hostname: registry-service
+    build: ./services/registry-service/RegistryService/RegistryService/
+    restart: always
+    networks:
+      - internal-poc-network
+    environment:
+      - SERVICE_NAME=registry-service
+      - ASPNETCORE_URLS=http://registry-service:8080
+    ports:
+      - "3333:8080"
+
   prometheus-webhook:
     hostname: prometheus-webhook
     build:
-      context: ./prometheus-webhook
+      context: ./services/prometheus-webhook
     container_name: prometheus-webhook
     ports:
       - "5001:5001"
@@ -229,7 +241,7 @@ services:
 
   # mtd-service:
   #   build:
-  #     context: ./mtd-service
+  #     context: ./services/mtd-service
   #     dockerfile: Dockerfile
   #   container_name: mtd-service
   #   volumes:
@@ -242,7 +254,7 @@ services:
   #
   mail-service:
     build:
-      context: ./mail-service
+      context: ./services/mail-service
       dockerfile: Dockerfile
     container_name: mail-service
     hostname: mail.local
@@ -254,6 +266,7 @@ services:
     volumes:
       - mail_data:/var/mail
       - mail_logs:/var/log/mail
+      - alertmanager_logs:/app/logs
     networks:
       - internal-poc-network
     environment:
