@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     netcat-traditional \
     jq \
     dos2unix \
+    iptables \
     && rm -rf /var/lib/apt/lists/*
 
 # Add Wazuh GPG key and repository
@@ -22,7 +23,7 @@ RUN curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | apt-key add - && \
     echo "deb https://packages.wazuh.com/4.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list
 
 # Install Wazuh agent
-RUN apt-get update && apt-get install -y wazuh-agent && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y wazuh-agent=4.9.2-1 && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
 WORKDIR /app
