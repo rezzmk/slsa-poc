@@ -1,0 +1,44 @@
+# /etc/spamassassin/local.cf
+# These values can be adjusted to make the filter more or less aggressive
+required_score 5.0
+report_safe 0
+
+# Use Bayes filtering
+use_bayes 1
+bayes_auto_learn 1
+
+# Check for common spam characteristics
+header LOCAL_SPAM_TRAP X-Spam-Trap =~ /./
+score LOCAL_SPAM_TRAP 10.0
+
+# Add custom rules
+body BITCOIN_SCAM /bitcoin|cryptocurrency|wallet address/i
+score BITCOIN_SCAM 3.0
+
+body URGENCY /urgent|immediate action|account.*suspend/i
+score URGENCY 2.0
+
+body PRIZE_WIN /won|prize|lottery|winner/i
+score PRIZE_WIN 2.5
+
+# Network tests
+header FORGED_HOTMAIL From:forged-hotmail.com
+score FORGED_HOTMAIL 3.5
+
+# Check headers
+header MISSING_MID Message-Id =~ /^$/
+score MISSING_MID 2.0
+
+header MISSING_DATE Date =~ /^$/
+score MISSING_DATE 2.0
+
+# Common spam phrases
+body WEALTH /make money fast|get rich quick|earn from home/i
+score WEALTH 3.0
+
+# Nigerian prince scam variations
+body NIGERIAN_SCAM /prince|inheritance|bank transfer|million dollars/i
+score NIGERIAN_SCAM 5.0
+
+# Add Prometheus metrics output
+add_header all Spam-Score _SCORE_

@@ -1,0 +1,21 @@
+# This is a generated file. Not intended for manual editing.
+services:
+  ssle-service:
+    build:
+      context: "C:\\Users\\caram\\src\\ua\\ssle\\p\\service\\ssle-service"
+      dockerfile: "ssle-service/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net8.0/ssle-service.dll"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "ssle-service:dev"
+    ports: []
+    volumes:
+    - "C:\\Users\\caram\\.nuget\\packages:/root/.nuget/packages"
+    - "C:\\Users\\caram\\src\\ua\\ssle\\p\\service\\ssle-service\\ssle-service:/app:rw"
+    - "C:\\Users\\caram\\src\\ua\\ssle\\p\\service\\ssle-service:/src:rw"
+    working_dir: "/app"
