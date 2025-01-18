@@ -239,19 +239,6 @@ services:
     user: root
     privileged: true
 
-  mtd-service:
-    build:
-      context: ./services/mtd-service
-      dockerfile: Dockerfile
-    container_name: mtd-service
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - mtd_logs:/app/logs
-    networks:
-      - internal-poc-network
-    ports:
-      - "8000:8000"
-
   mail-service:
     build:
       context: ./services/mail-service
@@ -273,6 +260,75 @@ services:
       - DOMAIN=local
       - ALLOWED_SENDER_DOMAINS=local
     restart: always
+
+  mtd-1:
+    container_name: mtd-1
+    hostname: mtd-1
+    build:
+      context: ./services/mtd-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - NODE_ID=1
+      - OTHER_NODES=http://mtd-2:8000,http://mtd-3:8000,http://mtd-4:8000
+    networks:
+      - internal-poc-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - mtd_logs:/var/logs/
+
+  mtd-2:
+    container_name: mtd-2
+    hostname: mtd-2
+    build:
+      context: ./services/mtd-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - NODE_ID=2
+      - OTHER_NODES=http://mtd-1:8000,http://mtd-3:8000,http://mtd-4:8000
+    networks:
+      - internal-poc-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - mtd_logs:/var/logs/
+
+  mtd-3:
+    container_name: mtd-3
+    hostname: mtd-3
+    build:
+      context: ./services/mtd-service
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      - NODE_ID=3
+      - OTHER_NODES=http://mtd-1:8000,http://mtd-2:8000,http://mtd-4:8000
+    networks:
+      - internal-poc-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - mtd_logs:/var/logs/
+
+  mtd-4:
+    container_name: mtd-4
+    hostname: mtd-4
+    build:
+      context: ./services/mtd-service
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      - NODE_ID=4
+      - OTHER_NODES=http://mtd-1:8000,http://mtd-2:8000,http://mtd-3:8000
+      - MALICIOUS_NODE=1
+    networks:
+      - internal-poc-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - mtd_logs:/var/logs/
 
 volumes:
   wazuh_api_configuration:
